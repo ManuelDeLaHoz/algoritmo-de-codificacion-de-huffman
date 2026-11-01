@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Árbol de Huffman - Comparativa de Métodos</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        /* Controles y Toggle Switch */
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 1.1rem;
+        }
+        .mode-label { color: #95a5a6; transition: color 0.3s; font-weight: bold; }
+        .active-mode { color: #2c3e50; }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3498db;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #2c3e50;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #1a252f; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+        /* Contenedores principales */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            max-width: 1000px;
+            width: 100%;
+        }
+        .top-section, .equations-box, .tree-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .bottom-section {
+            display: flex;
+            gap: 20px;
+        }
+        .equations-box {
+            flex: 1;
+            font-size: 1.2rem;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 15px;
+        }
+        .tree-box {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Tabla y utilidades */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        th, td {
+            border: 1px solid #bdc3c7;
+            padding: 12px;
+            transition: background-color 0.4s ease, opacity 0.5s ease;
+        }
+        th { background-color: #ecf0f1; font-weight: 600; }
+        
+        /* Estilos de botones de Símbolos */
+        .symbol-cell {
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        .symbol-cell:hover {
+            background-color: #ecf0f1;
+            transform: scale(1.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .symbol-cell.active-sym {
+            background-color: #f39c12;
+            color: white;
+            font-weight: bold;
+            transform: scale(1.05);
+            border-color: #e67e22;
+        }
+
+        .hidden-item { opacity: 0; transition: opacity 0.5s ease-in-out; }
+        .visible-item { opacity: 1; }
+        .highlight { background-color: #fff3cd !important; font-weight: bold; }
+
+        /* Estilos de SVG */
+        svg { width: 100%; max-width: 500px; height: 350px; }
+        .link { stroke: #2c3e50; stroke-width: 2; fill: none; transition: stroke 0.3s, stroke-width 0.3s; }
+        .node { fill: #fff; stroke: #3498db; stroke-width: 3; }
+        .node-label { font-size: 16px; font-family: monospace; }
+        .edge-label { fill: #e74c3c; font-size: 16px; font-weight: bold; }
+        
+        /* Clase añadida dinámicamente para iluminar rutas */
+        .path-highlight {
+            stroke: #f39c12 !important;
+            stroke-width: 5px !important;
+        }
+        
+        .tree-hint {
+            position: absolute;
+            top: 10px; right: 15px;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            font-style: italic;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls-container">
+        <!-- Switch de Método -->
+        <div class="toggle-wrapper">
+            <span class="mode-label" id="stdLabel">Estándar</span>
+            <label class="switch">
+                <input type="checkbox" id="modeToggle" checked>
+                <span class="slider"></span>
+            </label>
+            <span class="mode-label active-mode" id="minVarLabel">Mínima Varianza</span>
+        </div>
+        
+        <!-- Botones de Navegación -->
+        <div class="btn-group">
+            <button id="btnPrev">Paso Anterior</button>
+            <button id="btnNext">Siguiente Paso</button>
+            <button id="btnReset" style="background-color: #c0392b;">Reiniciar</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Tabla -->
+        <div class="top-section">
+            <table id="huffmanTable">
+                <thead>
+                    <tr>
+                        <th>Símbolo</th>
+                        <th>Etapa 1</th>
+                        <th class="col-e2 hidden-item">Etapa 2</th>
+                        <th class="col-e3 hidden-item">Etapa 3</th>
+                        <th class="col-e4 hidden-item">Etapa 4</th>
+                        <th class="col-e5 hidden-item">Etapa 5</th>
+                        <th class="col-cod hidden-item">Código</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="symbol-cell" data-sym="s1" title="Haz clic para ver ruta">s<sub>1</sub></td>
+                        <td class="col-e1 cell-e1-s1">0,35</td>
+                        <td class="col-e2 cell-e2-s1 hidden-item">0,35</td>
+                        <td class="col-e3 cell-e3-s1 hidden-item">0,35</td>
+                        <td class="col-e4 cell-e4-n3 hidden-item">0,40 n<sub>3</sub></td>
+                        <td class="col-e5 cell-e5-n4 hidden-item">0,60 n<sub>4</sub></td>
+                        <td class="col-cod hidden-item">00</td>
+                    </tr>
+                    <tr>
+                        <td class="symbol-cell" data-sym="s2" title="Haz clic para ver ruta">s<sub>2</sub></td>
+                        <td class="col-e1 cell-e1-s2">0,25</td>
+                        <td class="col-e2 cell-e2-s2 hidden-item">0,25</td>
+                        <td class="col-e3 cell-e3-n2 hidden-item" id="t_r2_c3">0,25 n<sub>2</sub></td>
+                        <td class="col-e4 cell-e4-s1 hidden-item">0,35 s<sub>1</sub></td>
+                        <td class="col-e5 cell-e5-n3 hidden-item">0,40 n<sub>3</sub></td>
+                        <td class="col-cod hidden-item" id="t_r2_cod">10</td>
+                    </tr>
+                    <tr>
+                        <td class="symbol-cell" data-sym="s3" title="Haz clic para ver ruta">s<sub>3</sub></td>
+                        <td class="col-e1 cell-e1-s3">0,15</td>
+                        <td class="col-e2 cell-e2-s3 hidden-item">0,15</td>
+                        <td class="col-e3 cell-e3-s2 hidden-item" id="t_r3_c3">0,25 s<sub>2</sub></td>
+                        <td class="col-e4 cell-e4-n2 hidden-item" id="t_r3_c4">0,25 n<sub>2</sub></td>
+                        <td class="col-e5 hidden-item"></td>
+                        <td class="col-cod hidden-item">11</td>
+                    </tr>
+                    <tr>
+                        <td class="symbol-cell" data-sym="s4" title="Haz clic para ver ruta">s<sub>4</sub></td>
+                        <td class="col-e1 cell-e1-s4">0,12</td>
+                        <td class="col-e2 cell-e2-n1 hidden-item">0,13 n<sub>1</sub></td>
+                        <td class="col-e3 cell-e3-s3 hidden-item">0,15 s<sub>3</sub></td>
+                        <td class="col-e4 hidden-item"></td>
+                        <td class="col-e5 hidden-item"></td>
+                        <td class="col-cod hidden-item" id="t_r4_cod">011</td>
+                    </tr>
+                    <tr>
+                        <td class="symbol-cell" data-sym="s5" title="Haz clic para ver ruta">s<sub>5</sub></td>
+                        <td class="col-e1 cell-e1-s5">0,08</td>
+                        <td class="col-e2 cell-e2-s4 hidden-item">0,12 s<sub>4</sub></td>
+                        <td class="col-e3 hidden-item"></td>
+                        <td class="col-e4 hidden-item"></td>
+                        <td class="col-e5 hidden-item"></td>
+                        <td class="col-cod hidden-item" id="t_r5_cod">0100</td>
+                    </tr>
+                    <tr>
+                        <td class="symbol-cell" data-sym="s6" title="Haz clic para ver ruta">s<sub>6</sub></td>
+                        <td class="col-e1 cell-e1-s6">0,05</td>
+                        <td class="col-e2 hidden-item"></td>
+                        <td class="col-e3 hidden-item"></td>
+                        <td class="col-e4 hidden-item"></td>
+                        <td class="col-e5 hidden-item"></td>
+                        <td class="col-cod hidden-item" id="t_r6_cod">0101</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bottom-section">
+            <!-- Ecuaciones -->
+            <div class="equations-box">
+                <div id="eq1" class="hidden-item">n<sub>1</sub> = s<sub>5</sub> + s<sub>6</sub></div>
+                <div id="eq2" class="hidden-item">n<sub>2</sub> = n<sub>1</sub> + s<sub>4</sub></div>
+                <div id="eq3" class="hidden-item">n<sub>3</sub> = s<sub>2</sub> + s<sub>3</sub></div>
+                <div id="eq4" class="hidden-item">n<sub>4</sub> = s<sub>1</sub> + n<sub>2</sub></div>
+            </div>
+
+            <!-- Árboles (Alternan su visualización) -->
+            <div class="tree-box">
+                <div id="treeHint" class="tree-hint">Haz clic en un símbolo s<sub>x</sub> de la tabla</div>
+                
+                <!-- Árbol de Mínima Varianza -->
+                <svg id="treeSvgMinVar" class="tree-svg hidden-item" viewBox="0 0 500 350">
+                    <line x1="250" y1="30" x2="150" y2="100" class="link" id="mv_e_r_n4" />
+                    <line x1="250" y1="30" x2="380" y2="100" class="link" id="mv_e_r_n3" />
+                    <line x1="150" y1="100" x2="80" y2="170" class="link" id="mv_e_n4_s1" />
+                    <line x1="150" y1="100" x2="220" y2="170" class="link" id="mv_e_n4_n2" />
+                    <line x1="380" y1="100" x2="310" y2="170" class="link" id="mv_e_n3_s2" />
+                    <line x1="380" y1="100" x2="450" y2="170" class="link" id="mv_e_n3_s3" />
+                    <line x1="220" y1="170" x2="160" y2="240" class="link" id="mv_e_n2_n1" />
+                    <line x1="220" y1="170" x2="280" y2="240" class="link" id="mv_e_n2_s4" />
+                    <line x1="160" y1="240" x2="100" y2="310" class="link" id="mv_e_n1_s5" />
+                    <line x1="160" y1="240" x2="220" y2="310" class="link" id="mv_e_n1_s6" />
+                    <text x="190" y="55" class="edge-label">0</text><text x="320" y="55" class="edge-label">1</text>
+                    <text x="105" y="125" class="edge-label">0</text><text x="195" y="125" class="edge-label">1</text>
+                    <text x="335" y="125" class="edge-label">0</text><text x="425" y="125" class="edge-label">1</text>
+                    <text x="180" y="195" class="edge-label">0</text><text x="260" y="195" class="edge-label">1</text>
+                    <text x="120" y="265" class="edge-label">0</text><text x="200" y="265" class="edge-label">1</text>
+                    <circle cx="250" cy="30" r="12" class="node" />
+                    <circle cx="150" cy="100" r="12" class="node" /><text x="110" y="90" class="node-label">n4</text>
+                    <circle cx="380" cy="100" r="12" class="node" /><text x="400" y="90" class="node-label">n3</text>
+                    <circle cx="80" cy="170" r="12" class="node" /><text x="40" y="175" class="node-label">s1</text>
+                    <circle cx="220" cy="170" r="12" class="node" /><text x="240" y="160" class="node-label">n2</text>
+                    <circle cx="310" cy="170" r="12" class="node" /><text x="270" y="175" class="node-label">s2</text>
+                    <circle cx="450" cy="170" r="12" class="node" /><text x="470" y="175" class="node-label">s3</text>
+                    <circle cx="160" cy="240" r="12" class="node" /><text x="120" y="240" class="node-label">n1</text>
+                    <circle cx="280" cy="240" r="12" class="node" /><text x="300" y="245" class="node-label">s4</text>
+                    <circle cx="100" cy="310" r="12" class="node" /><text x="60" y="315" class="node-label">s5</text>
+                    <circle cx="220" cy="310" r="12" class="node" /><text x="240" y="315" class="node-label">s6</text>
+                </svg>
+
+                <!-- Árbol Estándar -->
+                <svg id="treeSvgStd" class="tree-svg hidden-item" viewBox="0 0 500 350" style="display:none;">
+                    <line x1="250" y1="30" x2="150" y2="100" class="link" id="st_e_r_n4" />
+                    <line x1="250" y1="30" x2="350" y2="100" class="link" id="st_e_r_n3" />
+                    <line x1="150" y1="100" x2="80" y2="170" class="link" id="st_e_n4_s1" />
+                    <line x1="150" y1="100" x2="220" y2="170" class="link" id="st_e_n4_s2" />
+                    <line x1="350" y1="100" x2="280" y2="170" class="link" id="st_e_n3_n2" />
+                    <line x1="350" y1="100" x2="420" y2="170" class="link" id="st_e_n3_s3" />
+                    <line x1="280" y1="170" x2="210" y2="240" class="link" id="st_e_n2_n1" />
+                    <line x1="280" y1="170" x2="350" y2="240" class="link" id="st_e_n2_s4" />
+                    <line x1="210" y1="240" x2="140" y2="310" class="link" id="st_e_n1_s5" />
+                    <line x1="210" y1="240" x2="280" y2="310" class="link" id="st_e_n1_s6" />
+                    <text x="190" y="55" class="edge-label">0</text><text x="310" y="55" class="edge-label">1</text>
+                    <text x="105" y="125" class="edge-label">0</text><text x="195" y="125" class="edge-label">1</text>
+                    <text x="305" y="125" class="edge-label">0</text><text x="395" y="125" class="edge-label">1</text>
+                    <text x="235" y="195" class="edge-label">0</text><text x="325" y="195" class="edge-label">1</text>
+                    <text x="165" y="265" class="edge-label">0</text><text x="255" y="265" class="edge-label">1</text>
+                    <circle cx="250" cy="30" r="12" class="node" />
+                    <circle cx="150" cy="100" r="12" class="node" /><text x="110" y="90" class="node-label">n4</text>
+                    <circle cx="350" cy="100" r="12" class="node" /><text x="370" y="90" class="node-label">n3</text>
+                    <circle cx="80" cy="170" r="12" class="node" /><text x="40" y="175" class="node-label">s1</text>
+                    <circle cx="220" cy="170" r="12" class="node" /><text x="195" y="175" class="node-label">s2</text>
+                    <circle cx="280" cy="170" r="12" class="node" /><text x="305" y="175" class="node-label">n2</text>
+                    <circle cx="420" cy="170" r="12" class="node" /><text x="440" y="175" class="node-label">s3</text>
+                    <circle cx="210" cy="240" r="12" class="node" /><text x="170" y="240" class="node-label">n1</text>
+                    <circle cx="350" cy="240" r="12" class="node" /><text x="370" y="245" class="node-label">s4</text>
+                    <circle cx="140" cy="310" r="12" class="node" /><text x="100" y="315" class="node-label">s5</text>
+                    <circle cx="280" cy="310" r="12" class="node" /><text x="300" y="315" class="node-label">s6</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const totalSteps = 7;
+        let activeSymbol = null;
+
+        // Definición de las rutas (IDs de las líneas) para iluminar
+        const paths = {
+            minVar: {
+                s1: ['mv_e_r_n4', 'mv_e_n4_s1'],
+                s2: ['mv_e_r_n3', 'mv_e_n3_s2'],
+                s3: ['mv_e_r_n3', 'mv_e_n3_s3'],
+                s4: ['mv_e_r_n4', 'mv_e_n4_n2', 'mv_e_n2_s4'],
+                s5: ['mv_e_r_n4', 'mv_e_n4_n2', 'mv_e_n2_n1', 'mv_e_n1_s5'],
+                s6: ['mv_e_r_n4', 'mv_e_n4_n2', 'mv_e_n2_n1', 'mv_e_n1_s6']
+            },
+            std: {
+                s1: ['st_e_r_n4', 'st_e_n4_s1'],
+                s2: ['st_e_r_n4', 'st_e_n4_s2'],
+                s3: ['st_e_r_n3', 'st_e_n3_s3'],
+                s4: ['st_e_r_n3', 'st_e_n3_n2', 'st_e_n2_s4'],
+                s5: ['st_e_r_n3', 'st_e_n3_n2', 'st_e_n2_n1', 'st_e_n1_s5'],
+                s6: ['st_e_r_n3', 'st_e_n3_n2', 'st_e_n2_n1', 'st_e_n1_s6']
+            }
+        };
+
+        function clearHighlights() {
+            document.querySelectorAll('.path-highlight').forEach(el => el.classList.remove('path-highlight'));
+        }
+
+        function reapplyHighlight() {
+            clearHighlights();
+            if(!activeSymbol || currentStep < 5) return;
+            
+            const isMinVar = document.getElementById('modeToggle').checked;
+            const mode = isMinVar ? 'minVar' : 'std';
+            
+            paths[mode][activeSymbol].forEach(id => {
+                document.getElementById(id).classList.add('path-highlight');
+            });
+        }
+
+        // Click en Símbolos
+        document.querySelectorAll('.symbol-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                if (currentStep < 5) return; // Si el árbol no está visible, ignorar
+                
+                document.querySelectorAll('.symbol-cell').forEach(el => el.classList.remove('active-sym'));
+                this.classList.add('active-sym');
+                
+                activeSymbol = this.getAttribute('data-sym');
+                reapplyHighlight();
+            });
+        });
+
+        function applyMode(isMinVar) {
+            document.getElementById('t_r2_c3').innerHTML = isMinVar ? "0,25 n<sub>2</sub>" : "0,25";
+            document.getElementById('t_r3_c3').innerHTML = isMinVar ? "0,25 s<sub>2</sub>" : "0,25 n<sub>2</sub>";
+            document.getElementById('t_r3_c4').innerHTML = isMinVar ? "0,25 n<sub>2</sub>" : "0,25 s<sub>2</sub>";
+
+            document.getElementById('eq3').innerHTML = isMinVar ? "n<sub>3</sub> = s<sub>2</sub> + s<sub>3</sub>" : "n<sub>3</sub> = n<sub>2</sub> + s<sub>3</sub>";
+            document.getElementById('eq4').innerHTML = isMinVar ? "n<sub>4</sub> = s<sub>1</sub> + n<sub>2</sub>" : "n<sub>4</sub> = s<sub>1</sub> + s<sub>2</sub>";
+
+            document.getElementById('t_r2_cod').innerHTML = isMinVar ? "10" : "01";
+            document.getElementById('t_r4_cod').innerHTML = isMinVar ? "011" : "101";
+            document.getElementById('t_r5_cod').innerHTML = isMinVar ? "0100" : "1000";
+            document.getElementById('t_r6_cod').innerHTML = isMinVar ? "0101" : "1001";
+
+            if(isMinVar) {
+                document.getElementById('treeSvgMinVar').style.display = 'block';
+                document.getElementById('treeSvgStd').style.display = 'none';
+            } else {
+                document.getElementById('treeSvgMinVar').style.display = 'none';
+                document.getElementById('treeSvgStd').style.display = 'block';
+            }
+            
+            reapplyHighlight();
+        }
+
+        document.getElementById('modeToggle').addEventListener('change', (e) => {
+            const isMinVar = e.target.checked;
+            if(isMinVar) {
+                document.getElementById('minVarLabel').classList.add('active-mode');
+                document.getElementById('stdLabel').classList.remove('active-mode');
+            } else {
+                document.getElementById('minVarLabel').classList.remove('active-mode');
+                document.getElementById('stdLabel').classList.add('active-mode');
+            }
+            applyMode(isMinVar);
+        });
+
+        function updateUI() {
+            document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+            
+            document.querySelectorAll('.col-e2, .col-e3, .col-e4, .col-e5, .col-cod, #eq1, #eq2, #eq3, #eq4, .tree-svg')
+                .forEach(el => el.classList.remove('visible-item'));
+
+            if (currentStep >= 1) {
+                document.querySelectorAll('.col-e2').forEach(el => el.classList.add('visible-item'));
+                document.getElementById('eq1').classList.add('visible-item');
+                if(currentStep === 1) {
+                    document.querySelector('.cell-e1-s5').classList.add('highlight');
+                    document.querySelector('.cell-e1-s6').classList.add('highlight');
+                }
+            }
+            if (currentStep >= 2) {
+                document.querySelectorAll('.col-e3').forEach(el => el.classList.add('visible-item'));
+                document.getElementById('eq2').classList.add('visible-item');
+                if(currentStep === 2) {
+                    document.querySelector('.cell-e2-n1').classList.add('highlight');
+                    document.querySelector('.cell-e2-s4').classList.add('highlight');
+                }
+            }
+            if (currentStep >= 3) {
+                document.querySelectorAll('.col-e4').forEach(el => el.classList.add('visible-item'));
+                document.getElementById('eq3').classList.add('visible-item');
+                if(currentStep === 3) {
+                    document.querySelector('.cell-e3-s2').classList.add('highlight');
+                    document.querySelector('.cell-e3-s3').classList.add('highlight');
+                }
+            }
+            if (currentStep >= 4) {
+                document.querySelectorAll('.col-e5').forEach(el => el.classList.add('visible-item'));
+                document.getElementById('eq4').classList.add('visible-item');
+                if(currentStep === 4) {
+                    document.querySelector('.cell-e4-s1').classList.add('highlight');
+                    document.querySelector('.cell-e4-n2').classList.add('highlight');
+                }
+            }
+            if (currentStep >= 5) {
+                document.querySelectorAll('.tree-svg').forEach(el => el.classList.add('visible-item'));
+                document.getElementById('treeHint').style.opacity = '1';
+                reapplyHighlight(); // Mantener el camino iluminado si existe
+            } else {
+                document.getElementById('treeHint').style.opacity = '0';
+                clearHighlights();
+            }
+            
+            if (currentStep >= 6) {
+                document.querySelectorAll('.col-cod').forEach(el => el.classList.add('visible-item'));
+            }
+
+            document.getElementById('btnPrev').disabled = currentStep === 0;
+            document.getElementById('btnNext').disabled = currentStep === totalSteps;
+            document.getElementById('btnNext').innerText = currentStep === totalSteps ? "Fin" : "Siguiente Paso";
+        }
+
+        document.getElementById('btnNext').addEventListener('click', () => {
+            if (currentStep < totalSteps) { currentStep++; updateUI(); }
+        });
+        document.getElementById('btnPrev').addEventListener('click', () => {
+            if (currentStep > 0) { currentStep--; updateUI(); }
+        });
+        document.getElementById('btnReset').addEventListener('click', () => {
+            currentStep = 0;
+            activeSymbol = null;
+            document.querySelectorAll('.symbol-cell').forEach(el => el.classList.remove('active-sym'));
+            updateUI();
+        });
+
+        // Ejecución Inicial
+        applyMode(document.getElementById('modeToggle').checked);
+        updateUI();
+    </script>
+</body>
+</html>
