@@ -84,6 +84,7 @@ Construcción de nodos:
 | n₂ = 0,25 | n₁ + s₄ | n₁ + s₄ |
 | n₃ = 0,40 | **s₂ + s₃** | **n₂ + s₃** |
 | n₄ = 0,60 | **s₁ + n₂** | **s₁ + s₂** |
+| n₅ = 1,00 (raíz) | n₄ + n₃ | n₄ + n₃ |
 
 ### Métricas
 
